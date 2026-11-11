@@ -142,6 +142,7 @@ const PAGES = [
   ["Assistant",    "assistant.html"],
 ];
 const SIGN_IN_PAGE = "index.html";
+const MANAGER_ROLES = ["direktor", "empfangsleitung"];
 /* ========================================================== */
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -170,6 +171,13 @@ async function load() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
     $("app").innerHTML = `<div class="msg">You're signed out. <a href="${SIGN_IN_PAGE}">Sign in</a> to see the dashboard.</div>`;
+    return;
+  }
+
+  // Only Direktor and Empfangsleitung may open this page
+  const { data: me } = await sb.from("staff_profiles").select("role").eq("id", session.user.id).maybeSingle();
+  if (!MANAGER_ROLES.includes(me?.role)) {
+    $("app").innerHTML = `<div class="msg">This page is for management only. <a href="${SIGN_IN_PAGE}">Back to the room board</a></div>`;
     return;
   }
 

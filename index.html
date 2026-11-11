@@ -461,8 +461,8 @@
         <li><button type="button" data-view="res" data-t="navReservations"></button></li>
         <li><button type="button" data-view="checkin" data-t="navCheckin"></button></li>
         <li><button type="button" data-view="inv" data-t="navInvoices"></button></li>
-       <li><button type="button" onclick="location.href='dashboard.html'"><span data-t="navDashboard"></span></button></li>
-      <li><button type="button" onclick="location.href='reports.html'"><span>Reports</span></button></li>
+       <li class="manager-only" style="display:none"><button type="button" onclick="location.href='dashboard.html'"><span data-t="navDashboard"></span></button></li>
+      <li class="manager-only" style="display:none"><button type="button" onclick="location.href='reports.html'"><span>Reports</span></button></li>
       <li><button type="button" onclick="location.href='assistant.html'"><span>Assistant</span></button></li>
       </ul>
       </nav>
@@ -815,6 +815,7 @@ $("signin-form").addEventListener("submit", async (ev) => {
 $("signout").addEventListener("click", async () => {
   await db.auth.signOut();
   profile = null;
+  document.querySelectorAll(".manager-only").forEach(li => { li.style.display = "none"; });
   $("app").classList.add("hidden");
   $("signin").classList.remove("hidden");
   $("password").value = "";
@@ -832,6 +833,9 @@ async function startApp() {
     return;
   }
   profile = data;
+  // Dashboard + Reports only for Direktor and Empfangsleitung
+  const isManager = ["direktor", "empfangsleitung"].includes(data.role);
+  document.querySelectorAll(".manager-only").forEach(li => { li.style.display = isManager ? "" : "none"; });
   $("who-name").textContent = data.full_name;
   $("signin").classList.add("hidden");
   $("app").classList.remove("hidden");

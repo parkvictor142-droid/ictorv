@@ -147,7 +147,7 @@
       <textarea id="q" placeholder="Type a question… (Enter to send, Shift+Enter for a new line)"></textarea>
       <button class="btn" id="send">Ask</button>
     </div>
-    <p class="hint">Answers come from AI and can be wrong. Check important numbers in Reports or the Dashboard.</p>
+    <p class="hint">Answers come from AI and can be wrong. Double-check important numbers.</p>
   </main>
 </div>
 
@@ -166,6 +166,8 @@ const PAGES = [
   ["Assistant",    "assistant.html"],
 ];
 const SIGN_IN_PAGE = "index.html";
+const MANAGER_ROLES = ["direktor", "empfangsleitung"];
+const MANAGER_PAGES = ["dashboard.html", "reports.html"];
 const EXAMPLES = [
   "How many guests arrive and leave today?",
   "Which rooms are not ready for today's arrivals?",
@@ -182,8 +184,12 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"
 const fmt = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 let history = [];
 
-$("nav").innerHTML = PAGES.map(([label, href]) =>
-  `<a href="${href}" class="${href === "assistant.html" ? "active" : ""}">${label}</a>`).join("");
+function drawNav(isManager) {
+  $("nav").innerHTML = PAGES
+    .filter(([, href]) => isManager || !MANAGER_PAGES.includes(href))
+    .map(([label, href]) => `<a href="${href}" class="${href === "assistant.html" ? "active" : ""}">${label}</a>`).join("");
+}
+drawNav(false);
 $("signout").onclick = async () => { await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
 $("chips").innerHTML = EXAMPLES.map(e => `<button type="button">${esc(e)}</button>`).join("");
 $("chips").querySelectorAll("button").forEach((b, i) => b.onclick = () => ask(EXAMPLES[i]));
@@ -230,8 +236,10 @@ async function ask(text) {
   }
 }
 
-sb.auth.getSession().then(({ data: { session } }) => {
-  if (!session) add("err", `You're signed out. <a href="${SIGN_IN_PAGE}">Sign in</a> first.`);
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (!session) { add("err", `You're signed out. <a href="${SIGN_IN_PAGE}">Sign in</a> first.`); return; }
+  const { data: me } = await sb.from("staff_profiles").select("role").eq("id", session.user.id).maybeSingle();
+  drawNav(MANAGER_ROLES.includes(me?.role));
 });
 </script>
 </body>
