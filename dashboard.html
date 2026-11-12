@@ -96,6 +96,7 @@
     .hero{grid-template-columns:1fr;justify-items:center;padding:24px}
     h1{font-size:36px}
   }
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:9px}
 </style>
 </head>
 <body>
@@ -122,6 +123,17 @@
       <button class="btn" id="refresh">Refresh</button>
     </div>
     <div id="app"><p class="loading">Loading hotel data…</p></div>
+
+    <section id="staff" class="grid g2" style="display:none">
+      <div class="panel">
+        <h2>Online now</h2>
+        <ul class="list" id="online"><li class="empty">Connecting…</li></ul>
+      </div>
+      <div class="panel">
+        <h2>Sign-in history</h2>
+        <div id="logins"><p class="loading">Loading…</p></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -159,8 +171,50 @@ const inHouseOn = (r, d) => isActive(r) && r.status !== "checked_out" && day(r.a
 // Sidebar
 $("nav").innerHTML = PAGES.map(([label, href]) =>
   `<a href="${href}" class="${href === "dashboard.html" ? "active" : ""}">${label}</a>`).join("");
-$("signout").onclick = async () => { await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
+
+/* ---------- Who is online (Supabase Realtime Presence) ---------- */
+let onlineCh = null;
+function goOnline(client, userId, name, role, onSync) {
+  if (onlineCh) return;
+  let since = new Date().toISOString();
+  try {
+    const saved = sessionStorage.getItem("ictorv-since");
+    if (saved) since = saved; else sessionStorage.setItem("ictorv-since", since);
+  } catch (e) {}
+  onlineCh = client.channel("staff-online", { config: { presence: { key: userId } } });
+  if (onSync) onlineCh.on("presence", { event: "sync" }, () => onSync(onlineCh.presenceState()));
+  onlineCh.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") await onlineCh.track({ name, role, since });
+  });
+}
+async function logSignOut(client) {
+  try { await client.rpc("log_sign_out"); } catch (e) {}
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
+}
+$("signout").onclick = async () => { await logSignOut(sb); await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
 $("refresh").onclick = load;
+
+const ROLE_LABEL = { direktor: "Director", empfangsleitung: "Front office manager", rezeption: "Reception", housekeeping: "Housekeeping", haustechnik: "Maintenance" };
+const clock = (v) => new Date(v).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const stamp = (v) => new Date(v).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function renderOnline(state) {
+  const people = Object.values(state).map(tabs => tabs.reduce((a, b) => (a.since < b.since ? a : b)))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  $("online").innerHTML = people.length
+    ? people.map(p => `<li><span><span class="dot"></span>${esc(p.name)} <span style="color:var(--muted)">· ${esc(ROLE_LABEL[p.role] || p.role)}</span></span><span class="room">since ${clock(p.since)}</span></li>`).join("")
+    : `<li class="empty">Nobody is online.</li>`;
+}
+
+async function loadLogins() {
+  const { data, error } = await sb.from("staff_logins")
+    .select("full_name, role, signed_in_at, signed_out_at").order("signed_in_at", { ascending: false }).limit(12);
+  if (error) { $("logins").innerHTML = `<p class="empty">Sign-in history is not set up yet.</p>`; return; }
+  if (!data.length) { $("logins").innerHTML = `<p class="empty">No sign-ins recorded yet.</p>`; return; }
+  $("logins").innerHTML = `<table><thead><tr><th>Staff</th><th>Signed in</th><th>Signed out</th></tr></thead><tbody>` +
+    data.map(r => `<tr><td>${esc(r.full_name)}<br><span style="color:var(--muted);font-size:13px">${esc(ROLE_LABEL[r.role] || r.role)}</span></td><td>${stamp(r.signed_in_at)}</td><td>${r.signed_out_at ? stamp(r.signed_out_at) : "—"}</td></tr>`).join("") +
+    `</tbody></table>`;
+}
 
 async function load() {
   const now = new Date();
@@ -175,11 +229,14 @@ async function load() {
   }
 
   // Only Direktor and Empfangsleitung may open this page
-  const { data: me } = await sb.from("staff_profiles").select("role").eq("id", session.user.id).maybeSingle();
+  const { data: me } = await sb.from("staff_profiles").select("full_name, role").eq("id", session.user.id).maybeSingle();
   if (!MANAGER_ROLES.includes(me?.role)) {
     $("app").innerHTML = `<div class="msg">This page is for management only. <a href="${SIGN_IN_PAGE}">Back to the room board</a></div>`;
     return;
   }
+  $("staff").style.display = "";
+  goOnline(sb, session.user.id, me.full_name, me.role, renderOnline);
+  loadLogins();
 
   const q = await Promise.all([
     sb.from("rooms").select("number, room_type, status"),

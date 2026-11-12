@@ -190,7 +190,27 @@ function drawNav(isManager) {
     .map(([label, href]) => `<a href="${href}" class="${href === "assistant.html" ? "active" : ""}">${label}</a>`).join("");
 }
 drawNav(false);
-$("signout").onclick = async () => { await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
+
+/* ---------- Who is online (Supabase Realtime Presence) ---------- */
+let onlineCh = null;
+function goOnline(client, userId, name, role, onSync) {
+  if (onlineCh) return;
+  let since = new Date().toISOString();
+  try {
+    const saved = sessionStorage.getItem("ictorv-since");
+    if (saved) since = saved; else sessionStorage.setItem("ictorv-since", since);
+  } catch (e) {}
+  onlineCh = client.channel("staff-online", { config: { presence: { key: userId } } });
+  if (onSync) onlineCh.on("presence", { event: "sync" }, () => onSync(onlineCh.presenceState()));
+  onlineCh.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") await onlineCh.track({ name, role, since });
+  });
+}
+async function logSignOut(client) {
+  try { await client.rpc("log_sign_out"); } catch (e) {}
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
+}
+$("signout").onclick = async () => { await logSignOut(sb); await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
 $("chips").innerHTML = EXAMPLES.map(e => `<button type="button">${esc(e)}</button>`).join("");
 $("chips").querySelectorAll("button").forEach((b, i) => b.onclick = () => ask(EXAMPLES[i]));
 $("send").onclick = () => ask($("q").value);
@@ -238,8 +258,9 @@ async function ask(text) {
 
 sb.auth.getSession().then(async ({ data: { session } }) => {
   if (!session) { add("err", `You're signed out. <a href="${SIGN_IN_PAGE}">Sign in</a> first.`); return; }
-  const { data: me } = await sb.from("staff_profiles").select("role").eq("id", session.user.id).maybeSingle();
+  const { data: me } = await sb.from("staff_profiles").select("full_name, role").eq("id", session.user.id).maybeSingle();
   drawNav(MANAGER_ROLES.includes(me?.role));
+  if (me) goOnline(sb, session.user.id, me.full_name, me.role);
 });
 </script>
 </body>

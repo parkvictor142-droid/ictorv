@@ -798,6 +798,27 @@ document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click"
   applyLang();
 }));
 
+
+/* ---------- Who is online (Supabase Realtime Presence) ---------- */
+let onlineCh = null;
+function goOnline(client, userId, name, role, onSync) {
+  if (onlineCh) return;
+  let since = new Date().toISOString();
+  try {
+    const saved = sessionStorage.getItem("ictorv-since");
+    if (saved) since = saved; else sessionStorage.setItem("ictorv-since", since);
+  } catch (e) {}
+  onlineCh = client.channel("staff-online", { config: { presence: { key: userId } } });
+  if (onSync) onlineCh.on("presence", { event: "sync" }, () => onSync(onlineCh.presenceState()));
+  onlineCh.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") await onlineCh.track({ name, role, since });
+  });
+}
+async function logSignOut(client) {
+  try { await client.rpc("log_sign_out"); } catch (e) {}
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
+}
+
 /* ---------- Sign in / out ---------- */
 function showError(msg) { const e = $("signin-error"); e.textContent = msg; e.classList.remove("hidden"); }
 
@@ -809,10 +830,14 @@ $("signin-form").addEventListener("submit", async (ev) => {
   const { error } = await db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
   btn.disabled = false; btn.textContent = t("signinBtn");
   if (error) { showError(t("badLogin")); return; }
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
   await startApp();
+  if (profile) { try { await db.rpc("log_sign_in"); } catch (e) {} }
 });
 
 $("signout").addEventListener("click", async () => {
+  await logSignOut(db);
+  if (onlineCh) { db.removeChannel(onlineCh); onlineCh = null; }
   await db.auth.signOut();
   profile = null;
   document.querySelectorAll(".manager-only").forEach(li => { li.style.display = "none"; });
@@ -836,6 +861,7 @@ async function startApp() {
   // Dashboard + Reports only for Direktor and Empfangsleitung
   const isManager = ["direktor", "empfangsleitung"].includes(data.role);
   document.querySelectorAll(".manager-only").forEach(li => { li.style.display = isManager ? "" : "none"; });
+  goOnline(db, user.id, data.full_name, data.role);
   $("who-name").textContent = data.full_name;
   $("signin").classList.add("hidden");
   $("app").classList.remove("hidden");

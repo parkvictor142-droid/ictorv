@@ -177,7 +177,27 @@ const METHODS = { girocard: "Girocard (EC)", visa: "Visa", mastercard: "Masterca
 
 $("nav").innerHTML = PAGES.map(([label, href]) =>
   `<a href="${href}" class="${href === "reports.html" ? "active" : ""}">${label}</a>`).join("");
-$("signout").onclick = async () => { await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
+
+/* ---------- Who is online (Supabase Realtime Presence) ---------- */
+let onlineCh = null;
+function goOnline(client, userId, name, role, onSync) {
+  if (onlineCh) return;
+  let since = new Date().toISOString();
+  try {
+    const saved = sessionStorage.getItem("ictorv-since");
+    if (saved) since = saved; else sessionStorage.setItem("ictorv-since", since);
+  } catch (e) {}
+  onlineCh = client.channel("staff-online", { config: { presence: { key: userId } } });
+  if (onSync) onlineCh.on("presence", { event: "sync" }, () => onSync(onlineCh.presenceState()));
+  onlineCh.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") await onlineCh.track({ name, role, since });
+  });
+}
+async function logSignOut(client) {
+  try { await client.rpc("log_sign_out"); } catch (e) {}
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
+}
+$("signout").onclick = async () => { await logSignOut(sb); await sb.auth.signOut(); location.href = SIGN_IN_PAGE; };
 
 const now = new Date();
 $("month").value = ymd(now).slice(0, 7);
@@ -201,11 +221,12 @@ async function load() {
   }
 
   // Only Direktor and Empfangsleitung may open this page
-  const { data: me } = await sb.from("staff_profiles").select("role").eq("id", session.user.id).maybeSingle();
+  const { data: me } = await sb.from("staff_profiles").select("full_name, role").eq("id", session.user.id).maybeSingle();
   if (!MANAGER_ROLES.includes(me?.role)) {
     $("app").innerHTML = `<div class="msg">This page is for management only. <a href="${SIGN_IN_PAGE}">Back to the room board</a></div>`;
     return;
   }
+  goOnline(sb, session.user.id, me.full_name, me.role);
 
   const q = await Promise.all([
     sb.from("rooms").select("number"),
