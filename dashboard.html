@@ -97,6 +97,12 @@
     h1{font-size:36px}
   }
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:9px}
+  .req{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+  .req:last-child{border-bottom:0}
+  .req .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .req select{background:var(--onyx);color:var(--pearl);border:1px solid var(--line);border-radius:3px;padding:9px 10px;font:14px Montserrat,sans-serif}
+  .btn-line{background:none;border:1px solid var(--line);color:var(--pearl);padding:9px 14px;font:600 14px Montserrat,sans-serif;cursor:pointer;border-radius:3px}
+  .btn-line:hover{border-color:var(--alert);color:var(--alert)}
 </style>
 </head>
 <body>
@@ -125,6 +131,10 @@
     <div id="app"><p class="loading">Loading hotel data…</p></div>
 
     <section id="staff" class="grid g2" style="display:none">
+      <div class="panel" style="grid-column:1/-1">
+        <h2>Waiting for approval</h2>
+        <div id="pending"><p class="loading">Loading…</p></div>
+      </div>
       <div class="panel">
         <h2>Online now</h2>
         <ul class="list" id="online"><li class="empty">Connecting…</li></ul>
@@ -206,6 +216,34 @@ function renderOnline(state) {
     : `<li class="empty">Nobody is online.</li>`;
 }
 
+async function loadPending(myRole) {
+  const { data, error } = await sb.from("signup_requests").select("user_id, full_name, email, requested_at").order("requested_at");
+  if (error) { $("pending").innerHTML = `<p class="empty">Account approval is not set up yet.</p>`; return; }
+  if (!data.length) { $("pending").innerHTML = `<p class="empty">Nobody is waiting.</p>`; return; }
+  const roles = ["rezeption", "housekeeping", "haustechnik"].concat(myRole === "direktor" ? ["empfangsleitung"] : []);
+  $("pending").innerHTML = data.map((r, i) => `<div class="req">
+      <div><b>${esc(r.full_name)}</b><br><span style="color:var(--muted);font-size:13px">${esc(r.email)} · asked ${stamp(r.requested_at)}</span></div>
+      <div class="acts">
+        <select id="role-${i}" aria-label="Role for ${esc(r.full_name)}">${roles.map(x => `<option value="${x}">${ROLE_LABEL[x]}</option>`).join("")}</select>
+        <button class="btn" data-approve="${i}">Approve</button>
+        <button class="btn-line" data-reject="${i}">Reject</button>
+      </div></div>`).join("");
+  const act = async (fn, args, btn) => {
+    btn.disabled = true;
+    const { error } = await sb.rpc(fn, args);
+    if (error) { alert("That did not work: " + error.message); btn.disabled = false; return; }
+    loadPending(myRole);
+  };
+  $("pending").querySelectorAll("[data-approve]").forEach(b => b.onclick = () => {
+    const i = b.dataset.approve;
+    act("approve_signup", { p_user: data[i].user_id, p_role: $("role-" + i).value }, b);
+  });
+  $("pending").querySelectorAll("[data-reject]").forEach(b => b.onclick = () => {
+    const i = b.dataset.reject;
+    if (confirm(`Reject and delete the account request from ${data[i].full_name}?`)) act("reject_signup", { p_user: data[i].user_id }, b);
+  });
+}
+
 async function loadLogins() {
   const { data, error } = await sb.from("staff_logins")
     .select("full_name, role, signed_in_at, signed_out_at").order("signed_in_at", { ascending: false }).limit(12);
@@ -237,6 +275,7 @@ async function load() {
   $("staff").style.display = "";
   goOnline(sb, session.user.id, me.full_name, me.role, renderOnline);
   loadLogins();
+  loadPending(me.role);
 
   const q = await Promise.all([
     sb.from("rooms").select("number, room_type, status"),

@@ -424,8 +424,13 @@
     <p class="hotel-line">Hotel Morgenstern · München</p>
 
     <form id="signin-form" class="signin-form" novalidate>
-      <h2 data-t="signinTitle"></h2>
+      <h2 id="signin-title" data-t="signinTitle"></h2>
       <div id="signin-error" class="error hidden" role="alert"></div>
+      <div id="signin-info" class="info-box hidden" role="status"></div>
+      <div id="name-field" class="field hidden">
+        <label for="fullname" data-t="fullName"></label>
+        <input id="fullname" type="text" autocomplete="name" maxlength="80">
+      </div>
       <div class="field">
         <label for="email" data-t="email"></label>
         <input id="email" type="email" autocomplete="username" required>
@@ -435,6 +440,7 @@
         <input id="password" type="password" autocomplete="current-password" required>
       </div>
       <button id="signin-btn" class="btn-gold" type="submit" data-t="signinBtn"></button>
+      <p style="text-align:center;margin:16px 0 0"><button id="signup-toggle" class="link-btn" type="button" data-t="signupLink"></button></p>
     </form>
 
     <div class="lang-switch" role="group" aria-label="Language">
@@ -653,6 +659,11 @@ const T = {
     signinTitle: "Anmelden", email: "E-Mail", password: "Passwort", signinBtn: "Anmelden",
     signingIn: "Anmeldung läuft …", badLogin: "E-Mail oder Passwort ist falsch. Bitte erneut versuchen.",
     noProfile: "Dieses Konto hat noch kein Mitarbeiterprofil. Bitte die Direktion kontaktieren.",
+    signupTitle: "Konto erstellen", fullName: "Vor- und Nachname", signupBtn: "Konto beantragen",
+    signupLink: "Neu hier? Konto erstellen", backToSignin: "Zurück zur Anmeldung",
+    signupDone: "Konto beantragt. Falls Sie eine E-Mail erhalten, bestätigen Sie bitte Ihre Adresse. Danach muss die Direktion Ihr Konto freigeben.",
+    pendingApproval: "Ihr Konto wartet noch auf die Freigabe durch die Direktion.",
+    signupErr: "Konto konnte nicht erstellt werden: ", pwShort: "Das Passwort braucht mindestens 8 Zeichen.", nameMissing: "Bitte Vor- und Nachnamen eingeben.",
     navRooms: "Zimmerplan", navReservations: "Reservierungen", navCheckin: "Check-in", navInvoices: "Rechnungen",
     navDashboard: "Übersicht", soon: "bald", signout: "Abmelden",
     roomsTitle: "Zimmerplan", all: "Alle", loading: "Zimmer werden geladen …",
@@ -711,6 +722,11 @@ const T = {
     signinTitle: "Sign in", email: "Email", password: "Password", signinBtn: "Sign in",
     signingIn: "Signing in …", badLogin: "Email or password is incorrect. Please try again.",
     noProfile: "This account has no staff profile yet. Please contact the management.",
+    signupTitle: "Create account", fullName: "First and last name", signupBtn: "Request account",
+    signupLink: "New here? Create an account", backToSignin: "Back to sign in",
+    signupDone: "Account requested. If you receive an email, please confirm your address. After that the management has to approve your account.",
+    pendingApproval: "Your account is still waiting for approval by the management.",
+    signupErr: "Could not create the account: ", pwShort: "The password needs at least 8 characters.", nameMissing: "Please enter your first and last name.",
     navRooms: "Room board", navReservations: "Reservations", navCheckin: "Check-in", navInvoices: "Invoices",
     navDashboard: "Dashboard", soon: "soon", signout: "Sign out",
     roomsTitle: "Room board", all: "All", loading: "Loading rooms …",
@@ -821,10 +837,45 @@ async function logSignOut(client) {
 
 /* ---------- Sign in / out ---------- */
 function showError(msg) { const e = $("signin-error"); e.textContent = msg; e.classList.remove("hidden"); }
+function showInfo(msg) { const e = $("signin-info"); e.textContent = msg; e.classList.remove("hidden"); }
+
+/* ---------- Create account (waits for approval) ---------- */
+let signupMode = false;
+function setSignupMode(on) {
+  signupMode = on;
+  $("name-field").classList.toggle("hidden", !on);
+  $("signin-title").dataset.t = on ? "signupTitle" : "signinTitle";
+  $("signin-btn").dataset.t = on ? "signupBtn" : "signinBtn";
+  $("signup-toggle").dataset.t = on ? "backToSignin" : "signupLink";
+  $("password").autocomplete = on ? "new-password" : "current-password";
+  $("signin-error").classList.add("hidden");
+  applyLang();
+}
+$("signup-toggle").addEventListener("click", () => { $("signin-info").classList.add("hidden"); setSignupMode(!signupMode); });
+
+async function doSignup() {
+  const name = $("fullname").value.trim(), email = $("email").value.trim(), pw = $("password").value;
+  if (name.length < 2) { showError(t("nameMissing")); return; }
+  if (pw.length < 8) { showError(t("pwShort")); return; }
+  const btn = $("signin-btn");
+  btn.disabled = true;
+  const { data, error } = await db.auth.signUp({
+    email, password: pw,
+    options: { data: { full_name: name }, emailRedirectTo: location.origin + location.pathname },
+  });
+  btn.disabled = false;
+  if (error) { showError(t("signupErr") + error.message); return; }
+  if (data.session) await db.auth.signOut();   // no access before approval
+  $("password").value = ""; $("fullname").value = "";
+  setSignupMode(false);
+  showInfo(t("signupDone"));
+}
 
 $("signin-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   $("signin-error").classList.add("hidden");
+  $("signin-info").classList.add("hidden");
+  if (signupMode) { await doSignup(); return; }
   const btn = $("signin-btn");
   btn.disabled = true; btn.textContent = t("signingIn");
   const { error } = await db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
@@ -852,9 +903,10 @@ async function startApp() {
 
   const { data, error } = await db.from("staff_profiles").select("full_name, role, language").eq("id", user.id).maybeSingle();
   if (error || !data) {
+    const { data: pending } = await db.from("signup_requests").select("user_id").eq("user_id", user.id).maybeSingle();
     await db.auth.signOut();
     $("signin").classList.remove("hidden");
-    showError(t("noProfile"));
+    showError(pending ? t("pendingApproval") : t("noProfile"));
     return;
   }
   profile = data;
