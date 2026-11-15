@@ -1739,5 +1739,26 @@ window.addEventListener("load", () => {
   }, 250);
 });
 </script>
+<audio id="openingSound" preload="auto">
+  <source src="opening%20.mp3" type="audio/mpeg">
+  <source src="opening.mp3" type="audio/mpeg">
+</audio>
+<script>
+(function () {
+  var played = false;
+  function playOpening() {
+    if (played) return;
+    played = true;
+    var a = document.getElementById('openingSound');
+    a.volume = 0.6;
+    a.play().catch(function () { played = false; });
+  }
+  document.addEventListener('submit', playOpening, true);
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('button, input[type=submit]');
+    if (b && /anmelden|einloggen|sign in|log in|login/i.test(b.textContent || b.value || '')) playOpening();
+  }, true);
+})();
+</script>
 </body>
 </html>
