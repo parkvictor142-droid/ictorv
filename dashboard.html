@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard · ictorv · Hotel Morgenstern</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,11 +47,11 @@
 
   /* Hero: occupancy ring */
   .hero{display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;padding:30px 34px}
-  .ring{position:relative;width:200px;height:200px}
+  .ring{position:relative;width:220px;height:220px;flex-shrink:0}
   .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
   .ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .ring .pct{font-family:"Cormorant Garamond",serif;font-size:56px;line-height:1;color:var(--gold)}
-  .ring .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .ring .sub{color:var(--muted);font-size:12px;line-height:1.35;margin-top:6px;max-width:124px;text-align:center}
   .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:22px 28px}
   .fact .n{font-family:"Cormorant Garamond",serif;font-size:34px;line-height:1.1}
   .fact .l{color:var(--muted);font-size:13px}
