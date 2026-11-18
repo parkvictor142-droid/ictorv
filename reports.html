@@ -151,7 +151,7 @@
 /* ================= Language (DE / EN) — same setting as the room board ================= */
 let LANG = "de";
 try { LANG = localStorage.getItem("ictorv-lang") || "de"; } catch (e) {}
-const LOC = LANG === "de" ? "de-DE" : LOC;
+const LOC = LANG === "de" ? "de-DE" : "en-GB";
 document.documentElement.lang = LANG;
 const DE = {
   // sidebar + common
