@@ -179,7 +179,7 @@ const DE = {
   "No arrivals today": "Heute keine Anreisen", "No departures today": "Heute keine Abreisen", "Room status": "Zimmerstatus",
   "No rooms found": "Keine Zimmer gefunden", "Revenue": "Umsatz", "Needs attention": "Zu erledigen", "Unpaid invoices": "Offene Rechnungen",
   "All invoices are paid": "Alle Rechnungen sind bezahlt", "In house without Meldeschein": "Im Haus ohne Meldeschein",
-  "Every guest has a Meldeschein": "Jeder Gast hat einen Meldeschein", "Occupancy, next 7 days": "Auslastung, nächste 7 Tage",
+  "Every guest has a Meldeschein": "Jeder Gast hat einen Meldeschein", "Late check-out": "Check-out überfällig", "Occupancy, next 7 days": "Auslastung, nächste 7 Tage",
   "clean": "Sauber", "dirty": "Zu reinigen", "inspected": "Kontrolliert", "occupied": "Belegt", "out of order": "Außer Betrieb", "unknown": "Unbekannt",
   "Guest": "Gast",
   // reports
@@ -447,6 +447,8 @@ async function load() {
     return { label: d.toLocaleDateString(LOC, { weekday: "short", day: "numeric" }), pct: Math.round(occ / totalRooms * 100), today: i === 0 };
   });
 
+  const CHECKOUT_TIME = "11:00"; // same as on the room board
+  const lateNow = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` >= CHECKOUT_TIME;
   const C = 2 * Math.PI * 88;
   const list = (rows, fn, empty) => rows.length ? `<ul class="list">${rows.map(fn).join("")}</ul>` : `<p class="empty">${empty}</p>`;
 
@@ -476,7 +478,7 @@ async function load() {
         <div class="sub-h">Arriving</div>
         ${list(arrivals, r => `<li><span>${nameOf(r)}</span><span class="room">Room ${esc(r.room_number)}</span></li>`, "No arrivals today")}
         <div class="sub-h">Departing</div>
-        ${list(departures, r => `<li><span>${nameOf(r)}</span><span class="room">Room ${esc(r.room_number)}</span></li>`, "No departures today")}
+        ${list(departures, r => `<li><span>${nameOf(r)}${r.status === "checked_out" ? ` <span style="color:var(--muted)">· ✓</span>` : ""}</span><span>${r.status === "checked_in" && lateNow ? `<span class="due">Late check-out</span> · ` : ""}<span class="room">Room ${esc(r.room_number)}</span></span></li>`, "No departures today")}
       </section>
       <section class="panel">
         <h2>Room status</h2>

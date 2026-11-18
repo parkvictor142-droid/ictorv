@@ -140,6 +140,10 @@
   /* ---------- App shell ---------- */
   .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100%; }
   .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
     background: var(--night);
     border-right: 1px solid var(--line);
     padding: 28px 18px;
@@ -385,7 +389,7 @@
   /* ---------- Mobile ---------- */
   @media (max-width: 820px) {
     .app { grid-template-columns: 1fr; }
-    .sidebar { padding: 16px; gap: 14px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .sidebar { position: static; height: auto; overflow: visible; padding: 16px; gap: 14px; border-right: 0; border-bottom: 1px solid var(--line); }
     nav ul { grid-auto-flow: column; overflow-x: auto; }
     nav button { white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; }
     nav button[aria-current=page] { border-bottom-color: var(--gold); }
@@ -424,8 +428,13 @@
     <p class="hotel-line">Hotel Morgenstern · München</p>
 
     <form id="signin-form" class="signin-form" novalidate>
-      <h2 data-t="signinTitle"></h2>
+      <h2 id="signin-title" data-t="signinTitle"></h2>
       <div id="signin-error" class="error hidden" role="alert"></div>
+      <div id="signin-info" class="info-box hidden" role="status"></div>
+      <div id="name-field" class="field hidden">
+        <label for="fullname" data-t="fullName"></label>
+        <input id="fullname" type="text" autocomplete="name" maxlength="80">
+      </div>
       <div class="field">
         <label for="email" data-t="email"></label>
         <input id="email" type="email" autocomplete="username" required>
@@ -435,6 +444,7 @@
         <input id="password" type="password" autocomplete="current-password" required>
       </div>
       <button id="signin-btn" class="btn-gold" type="submit" data-t="signinBtn"></button>
+      <p style="text-align:center;margin:16px 0 0"><button id="signup-toggle" class="link-btn" type="button" data-t="signupLink"></button></p>
     </form>
 
     <div class="lang-switch" role="group" aria-label="Language">
@@ -461,9 +471,9 @@
         <li><button type="button" data-view="res" data-t="navReservations"></button></li>
         <li><button type="button" data-view="checkin" data-t="navCheckin"></button></li>
         <li><button type="button" data-view="inv" data-t="navInvoices"></button></li>
-       <li><button type="button" onclick="location.href='dashboard.html'"><span data-t="navDashboard"></span></button></li>
-      <li><button type="button" onclick="location.href='reports.html'"><span>Reports</span></button></li>
-      <li><button type="button" onclick="location.href='assistant.html'"><span>Assistant</span></button></li>
+       <li class="manager-only" style="display:none"><button type="button" onclick="location.href='dashboard.html'"><span data-t="navDashboard"></span></button></li>
+      <li class="manager-only" style="display:none"><button type="button" onclick="location.href='reports.html'"><span data-t="navReports"></span></button></li>
+      <li><button type="button" onclick="location.href='assistant.html'"><span data-t="navAssistant"></span></button></li>
       </ul>
       </nav>
 
@@ -653,8 +663,13 @@ const T = {
     signinTitle: "Anmelden", email: "E-Mail", password: "Passwort", signinBtn: "Anmelden",
     signingIn: "Anmeldung läuft …", badLogin: "E-Mail oder Passwort ist falsch. Bitte erneut versuchen.",
     noProfile: "Dieses Konto hat noch kein Mitarbeiterprofil. Bitte die Direktion kontaktieren.",
+    signupTitle: "Konto erstellen", fullName: "Vor- und Nachname", signupBtn: "Konto beantragen",
+    signupLink: "Neu hier? Konto erstellen", backToSignin: "Zurück zur Anmeldung",
+    signupDone: "Konto beantragt. Falls Sie eine E-Mail erhalten, bestätigen Sie bitte Ihre Adresse. Danach muss die Direktion Ihr Konto freigeben.",
+    pendingApproval: "Ihr Konto wartet noch auf die Freigabe durch die Direktion.",
+    signupErr: "Konto konnte nicht erstellt werden: ", pwShort: "Das Passwort braucht mindestens 8 Zeichen.", nameMissing: "Bitte Vor- und Nachnamen eingeben.",
     navRooms: "Zimmerplan", navReservations: "Reservierungen", navCheckin: "Check-in", navInvoices: "Rechnungen",
-    navDashboard: "Übersicht", soon: "bald", signout: "Abmelden",
+    navDashboard: "Übersicht", navReports: "Berichte", navAssistant: "Assistent", soon: "bald", signout: "Abmelden",
     roomsTitle: "Zimmerplan", all: "Alle", loading: "Zimmer werden geladen …",
     loadError: "Zimmer konnten nicht geladen werden: ", floor: "Etage", empty: "Keine Zimmer mit diesem Status.",
     guests: "Pers.", changeStatus: "Status ändern", close: "Schließen", saveError: "Status konnte nicht gespeichert werden: ",
@@ -675,7 +690,7 @@ const T = {
     errBooked: "Dieses Zimmer wurde gerade für diesen Zeitraum belegt. Bitte ein anderes wählen.", errSave: "Reservierung konnte nicht gespeichert werden: ",
     created: "Reservierung {ref} wurde angelegt.",
     resStatus: { confirmed: "Bestätigt", checked_in: "Eingecheckt", checked_out: "Abgereist", cancelled: "Storniert", no_show: "No-Show" },
-    checkin: "Einchecken", checkout: "Auschecken", ciTitle: "Check-in",
+    checkin: "Einchecken", checkout: "Auschecken", coBy: "Check-out bis {time}", coLate: "Check-out überfällig", coAt: "Ausgecheckt {time}", ciTitle: "Check-in",
     ciNoForm: "Deutsche Staatsangehörigkeit: Seit 1. Januar 2025 ist kein Meldeschein erforderlich.",
     ciForm: "Meldeschein (§§ 29–30 BMG)", ciFormHint: "Pflicht für Gäste ohne deutsche Staatsangehörigkeit. Ausweis prüfen und vom Gast unterschreiben lassen.",
     dob: "Geburtsdatum", accompanying: "Mitreisende (Ehepartner, Kinder)", docType: "Ausweisdokument", docPassport: "Reisepass",
@@ -711,8 +726,13 @@ const T = {
     signinTitle: "Sign in", email: "Email", password: "Password", signinBtn: "Sign in",
     signingIn: "Signing in …", badLogin: "Email or password is incorrect. Please try again.",
     noProfile: "This account has no staff profile yet. Please contact the management.",
+    signupTitle: "Create account", fullName: "First and last name", signupBtn: "Request account",
+    signupLink: "New here? Create an account", backToSignin: "Back to sign in",
+    signupDone: "Account requested. If you receive an email, please confirm your address. After that the management has to approve your account.",
+    pendingApproval: "Your account is still waiting for approval by the management.",
+    signupErr: "Could not create the account: ", pwShort: "The password needs at least 8 characters.", nameMissing: "Please enter your first and last name.",
     navRooms: "Room board", navReservations: "Reservations", navCheckin: "Check-in", navInvoices: "Invoices",
-    navDashboard: "Dashboard", soon: "soon", signout: "Sign out",
+    navDashboard: "Dashboard", navReports: "Reports", navAssistant: "Assistant", soon: "soon", signout: "Sign out",
     roomsTitle: "Room board", all: "All", loading: "Loading rooms …",
     loadError: "Rooms could not be loaded: ", floor: "Floor", empty: "No rooms with this status.",
     guests: "guests", changeStatus: "Change status", close: "Close", saveError: "Status could not be saved: ",
@@ -733,7 +753,7 @@ const T = {
     errBooked: "This room was just booked for these dates. Please choose another one.", errSave: "Reservation could not be saved: ",
     created: "Reservation {ref} was created.",
     resStatus: { confirmed: "Confirmed", checked_in: "Checked in", checked_out: "Checked out", cancelled: "Cancelled", no_show: "No-show" },
-    checkin: "Check in", checkout: "Check out", ciTitle: "Check-in",
+    checkin: "Check in", checkout: "Check out", coBy: "Check-out by {time}", coLate: "Late check-out", coAt: "Checked out {time}", ciTitle: "Check-in",
     ciNoForm: "German citizen: since 1 January 2025 no registration form (Meldeschein) is required.",
     ciForm: "Registration form · Meldeschein (§§ 29–30 BMG)", ciFormHint: "Required for guests without German citizenship. Check the ID and have the guest sign.",
     dob: "Date of birth", accompanying: "Accompanying (spouse, children)", docType: "ID document", docPassport: "Passport",
@@ -798,23 +818,84 @@ document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click"
   applyLang();
 }));
 
+
+/* ---------- Who is online (Supabase Realtime Presence) ---------- */
+let onlineCh = null;
+function goOnline(client, userId, name, role, onSync) {
+  if (onlineCh) return;
+  let since = new Date().toISOString();
+  try {
+    const saved = sessionStorage.getItem("ictorv-since");
+    if (saved) since = saved; else sessionStorage.setItem("ictorv-since", since);
+  } catch (e) {}
+  onlineCh = client.channel("staff-online", { config: { presence: { key: userId } } });
+  if (onSync) onlineCh.on("presence", { event: "sync" }, () => onSync(onlineCh.presenceState()));
+  onlineCh.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") await onlineCh.track({ name, role, since });
+  });
+}
+async function logSignOut(client) {
+  try { await client.rpc("log_sign_out"); } catch (e) {}
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
+}
+
 /* ---------- Sign in / out ---------- */
 function showError(msg) { const e = $("signin-error"); e.textContent = msg; e.classList.remove("hidden"); }
+function showInfo(msg) { const e = $("signin-info"); e.textContent = msg; e.classList.remove("hidden"); }
+
+/* ---------- Create account (waits for approval) ---------- */
+let signupMode = false;
+function setSignupMode(on) {
+  signupMode = on;
+  $("name-field").classList.toggle("hidden", !on);
+  $("signin-title").dataset.t = on ? "signupTitle" : "signinTitle";
+  $("signin-btn").dataset.t = on ? "signupBtn" : "signinBtn";
+  $("signup-toggle").dataset.t = on ? "backToSignin" : "signupLink";
+  $("password").autocomplete = on ? "new-password" : "current-password";
+  $("signin-error").classList.add("hidden");
+  applyLang();
+}
+$("signup-toggle").addEventListener("click", () => { $("signin-info").classList.add("hidden"); setSignupMode(!signupMode); });
+
+async function doSignup() {
+  const name = $("fullname").value.trim(), email = $("email").value.trim(), pw = $("password").value;
+  if (name.length < 2) { showError(t("nameMissing")); return; }
+  if (pw.length < 8) { showError(t("pwShort")); return; }
+  const btn = $("signin-btn");
+  btn.disabled = true;
+  const { data, error } = await db.auth.signUp({
+    email, password: pw,
+    options: { data: { full_name: name }, emailRedirectTo: location.origin + location.pathname },
+  });
+  btn.disabled = false;
+  if (error) { showError(t("signupErr") + error.message); return; }
+  if (data.session) await db.auth.signOut();   // no access before approval
+  $("password").value = ""; $("fullname").value = "";
+  setSignupMode(false);
+  showInfo(t("signupDone"));
+}
 
 $("signin-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   $("signin-error").classList.add("hidden");
+  $("signin-info").classList.add("hidden");
+  if (signupMode) { await doSignup(); return; }
   const btn = $("signin-btn");
   btn.disabled = true; btn.textContent = t("signingIn");
   const { error } = await db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
   btn.disabled = false; btn.textContent = t("signinBtn");
   if (error) { showError(t("badLogin")); return; }
+  try { sessionStorage.removeItem("ictorv-since"); } catch (e) {}
   await startApp();
+  if (profile) { try { await db.rpc("log_sign_in"); } catch (e) {} }
 });
 
 $("signout").addEventListener("click", async () => {
+  await logSignOut(db);
+  if (onlineCh) { db.removeChannel(onlineCh); onlineCh = null; }
   await db.auth.signOut();
   profile = null;
+  document.querySelectorAll(".manager-only").forEach(li => { li.style.display = "none"; });
   $("app").classList.add("hidden");
   $("signin").classList.remove("hidden");
   $("password").value = "";
@@ -826,12 +907,17 @@ async function startApp() {
 
   const { data, error } = await db.from("staff_profiles").select("full_name, role, language").eq("id", user.id).maybeSingle();
   if (error || !data) {
+    const { data: pending } = await db.from("signup_requests").select("user_id").eq("user_id", user.id).maybeSingle();
     await db.auth.signOut();
     $("signin").classList.remove("hidden");
-    showError(t("noProfile"));
+    showError(pending ? t("pendingApproval") : t("noProfile"));
     return;
   }
   profile = data;
+  // Dashboard + Reports only for Direktor and Empfangsleitung
+  const isManager = ["direktor", "empfangsleitung"].includes(data.role);
+  document.querySelectorAll(".manager-only").forEach(li => { li.style.display = isManager ? "" : "none"; });
+  goOnline(db, user.id, data.full_name, data.role);
   $("who-name").textContent = data.full_name;
   $("signin").classList.add("hidden");
   $("app").classList.remove("hidden");
@@ -999,15 +1085,31 @@ function resTotal(r) {
 }
 
 /* ---------- Reservations list ---------- */
+const CHECKOUT_TIME = "11:00"; // hotel check-out time (change here if needed)
+const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+function checkoutNote(r, today) {
+  if (r.status === "checked_out" && r.checked_out_at) {
+    const d = new Date(r.checked_out_at);
+    const time = d.toLocaleTimeString(t("locale"), { hour: "2-digit", minute: "2-digit" });
+    const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    return `<span class="sub-line">${fill(t("coAt"), { time: iso === today ? time : fmtDate(iso) + " " + time })}</span>`;
+  }
+  if (r.status === "checked_in" && (r.departure < today || (r.departure === today && nowHHMM() >= CHECKOUT_TIME)))
+    return `<span class="sub-line" style="color:var(--st-dirty);font-weight:600">⚠ ${t("coLate")}</span>`;
+  if (r.status === "checked_in" && r.departure === today)
+    return `<span class="sub-line">${fill(t("coBy"), { time: CHECKOUT_TIME })}</span>`;
+  return "";
+}
 let reservations = null;
 let resFilter = "upcoming";
 const RES_COLOR = { confirmed: "var(--st-inspected)", checked_in: "var(--st-occupied)", checked_out: "var(--st-ooo)", cancelled: "var(--st-dirty)", no_show: "var(--st-dirty)" };
 
 async function loadReservations() {
   if (!reservations) $("res-list").innerHTML = `<p class="notice">${t("loadingShort")}</p>`;
-  const { data, error } = await db.from("reservations")
-    .select("id, guest_id, booking_ref, arrival, departure, adults, children, nightly_rate, status, room_number, room_type, rate_plan, guests(first_name, last_name, nationality)")
-    .order("arrival").order("id");
+  const cols = "id, guest_id, booking_ref, arrival, departure, adults, children, nightly_rate, status, room_number, room_type, rate_plan, guests(first_name, last_name, nationality)";
+  let { data, error } = await db.from("reservations").select(cols + ", checked_out_at").order("arrival").order("id");
+  if (error && /checked_out_at/.test(error.message)) // column not created yet → load without it
+    ({ data, error } = await db.from("reservations").select(cols).order("arrival").order("id"));
   if (error) { $("res-list").innerHTML = `<p class="notice">${t("loadFail")}${escapeHtml(error.message)}</p>`; return; }
   reservations = data;
   renderReservations();
@@ -1051,7 +1153,7 @@ function renderReservations() {
       <td>${fmtDate(r.arrival)} – ${fmtDate(r.departure)}<span class="sub-line">${n} ${n === 1 ? t("night") : t("nights")} · ${persons(r.adults + r.children)}</span></td>
       <td>${escapeHtml(nameOf(ref.ratePlans.find(p => p.code === r.rate_plan)))}</td>
       <td class="num-col">${money(resTotal(r))}</td>
-      <td><span class="badge"><span class="dot" style="background:${RES_COLOR[r.status]}"></span>${T[lang].resStatus[r.status]}</span></td>
+      <td><span class="badge"><span class="dot" style="background:${RES_COLOR[r.status]}"></span>${T[lang].resStatus[r.status]}</span>${checkoutNote(r, today)}</td>
       <td><div class="actions">${rowActions(r, today)}</div></td>
     </tr>`;
   });
@@ -1489,7 +1591,9 @@ $("folio-pay").addEventListener("click", async () => {
     }
     let { error } = await db.from("invoices").update({ status: "paid" }).eq("id", invoice.id);
     if (error) throw error;
-    ({ error } = await db.from("reservations").update({ status: "checked_out" }).eq("id", r.id));
+    ({ error } = await db.from("reservations").update({ status: "checked_out", checked_out_at: new Date().toISOString() }).eq("id", r.id));
+    if (error && /checked_out_at/.test(error.message)) // column not created yet → check out without the time
+      ({ error } = await db.from("reservations").update({ status: "checked_out" }).eq("id", r.id));
     if (error) throw error;
     ({ error } = await db.from("rooms").update({ status: "dirty" }).eq("number", r.room_number));
     if (error) throw error;
@@ -1656,6 +1760,25 @@ window.addEventListener("load", () => {
     }
   }, 250);
 });
+</script>
+<audio id="openingSound" preload="auto">
+  <source src="opening%20.mp3" type="audio/mpeg">
+  <source src="opening.mp3" type="audio/mpeg">
+</audio>
+<script>
+(function () {
+  var played = false;
+  function playOpening() {
+    if (played) return;
+    played = true;
+    var a = document.getElementById('openingSound');
+    a.volume = 0.6;
+    a.play().catch(function () { played = false; });
+  }
+  // Only the sign-in form plays the sound (not reservation or check-in forms)
+  var form = document.getElementById('signin-form');
+  if (form) form.addEventListener('submit', playOpening, true);
+})();
 </script>
 </body>
 </html>
