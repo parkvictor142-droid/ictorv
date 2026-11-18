@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,7 +19,7 @@
   .shell{display:flex;min-height:100%}
 
   /* Sidebar */
-  .side{width:250px;flex-shrink:0;background:var(--night);border-right:1px solid var(--line);padding:28px 20px;display:flex;flex-direction:column}
+  .side{position:sticky;top:0;height:100vh;overflow-y:auto;box-sizing:border-box;width:250px;flex-shrink:0;background:var(--night);border-right:1px solid var(--line);padding:28px 20px;display:flex;flex-direction:column}
   .brand{display:flex;align-items:center;gap:12px;margin-bottom:40px}
   .brand svg{width:44px;height:44px}
   .brand b{font-family:Cinzel,serif;font-weight:600;letter-spacing:.22em;color:var(--gold);font-size:18px;display:block}
@@ -28,7 +28,10 @@
   .nav a:hover{opacity:1;background:rgba(255,255,255,.04)}
   .nav a.active{opacity:1;background:var(--night-2);border-left-color:var(--gold);font-weight:600}
   .nav a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-  .signout{margin-top:auto;background:none;border:0;color:var(--muted);font:inherit;text-align:left;padding:11px 14px;cursor:pointer;text-decoration:underline}
+  .langsw{margin-top:auto;display:inline-flex;align-self:flex-start;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .langsw button{background:none;border:0;color:var(--muted);padding:6px 14px;font:13px Montserrat,sans-serif;cursor:pointer}
+  .langsw button[aria-pressed=true]{background:rgba(201,165,92,.14);color:var(--gold)}
+  .signout{margin-top:8px;background:none;border:0;color:var(--muted);font:inherit;text-align:left;padding:11px 14px;cursor:pointer;text-decoration:underline}
 
   /* Main */
   main{flex:1;padding:36px 44px 60px;max-width:1200px}
@@ -85,7 +88,7 @@
 
   @media (max-width:900px){
     .shell{flex-direction:column}
-    .side{width:auto;padding:16px;border-right:0;border-bottom:1px solid var(--line)}
+    .side{position:static;height:auto;overflow:visible;width:auto;padding:16px;border-right:0;border-bottom:1px solid var(--line)}
     .brand{margin-bottom:12px}
     .nav{display:flex;overflow-x:auto;gap:4px}
     .nav a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent}
@@ -117,6 +120,7 @@
       <div><b>ICTORV</b><i>Hotel Morgenstern</i></div>
     </div>
     <nav class="nav" id="nav"></nav>
+    <div class="langsw" role="group" aria-label="Language"><button type="button" data-setlang="de">DE</button><button type="button" data-setlang="en">EN</button></div>
     <button class="signout" id="signout">Sign out</button>
   </aside>
 
@@ -148,6 +152,100 @@
 </div>
 
 <script>
+/* ================= Language (DE / EN) — same setting as the room board ================= */
+let LANG = "de";
+try { LANG = localStorage.getItem("ictorv-lang") || "de"; } catch (e) {}
+const LOC = LANG === "de" ? "de-DE" : LOC;
+document.documentElement.lang = LANG;
+const DE = {
+  // sidebar + common
+  "Room board": "Zimmerplan", "Reservations": "Reservierungen", "Check-in": "Check-in", "Invoices": "Rechnungen",
+  "Dashboard": "Übersicht", "Reports": "Berichte", "Assistant": "Assistent", "Sign out": "Abmelden",
+  "Refresh": "Aktualisieren", "Loading…": "Wird geladen…", "Loading hotel data…": "Hoteldaten werden geladen…",
+  "You're signed out.": "Sie sind abgemeldet.", "Sign in": "Anmelden", "first.": "zuerst.",
+  "to see the dashboard.": "um die Übersicht zu sehen.", "to see reports.": "um die Berichte zu sehen.",
+  "This page is for management only.": "Diese Seite ist nur für die Leitung.", "Back to the room board": "Zurück zum Zimmerplan",
+  "Net": "Netto", "VAT": "MwSt.", "Gross": "Brutto", "Total": "Summe", "Today": "Heute", "This month": "Dieser Monat",
+  "ADR (average rate)": "ADR (Ø Zimmerpreis)", "RevPAR": "RevPAR",
+  // dashboard
+  "Waiting for approval": "Wartet auf Freigabe", "Online now": "Jetzt online", "Sign-in history": "Anmeldeverlauf",
+  "Connecting…": "Verbinde…", "Nobody is online.": "Niemand ist online.", "Nobody is waiting.": "Niemand wartet.",
+  "Account approval is not set up yet.": "Kontofreigabe ist noch nicht eingerichtet.",
+  "Approve": "Freigeben", "Reject": "Ablehnen", "Staff": "Mitarbeiter/in", "Signed in": "Angemeldet", "Signed out": "Abgemeldet",
+  "Sign-in history is not set up yet.": "Anmeldeverlauf ist noch nicht eingerichtet.", "No sign-ins recorded yet.": "Noch keine Anmeldungen.",
+  "Arrivals today": "Anreisen heute", "Departures today": "Abreisen heute", "Guests in house": "Gäste im Haus",
+  "Room revenue tonight": "Logisumsatz heute Nacht", "Today's movements": "Bewegungen heute", "Arriving": "Anreise", "Departing": "Abreise",
+  "No arrivals today": "Heute keine Anreisen", "No departures today": "Heute keine Abreisen", "Room status": "Zimmerstatus",
+  "No rooms found": "Keine Zimmer gefunden", "Revenue": "Umsatz", "Needs attention": "Zu erledigen", "Unpaid invoices": "Offene Rechnungen",
+  "All invoices are paid": "Alle Rechnungen sind bezahlt", "In house without Meldeschein": "Im Haus ohne Meldeschein",
+  "Every guest has a Meldeschein": "Jeder Gast hat einen Meldeschein", "Occupancy, next 7 days": "Auslastung, nächste 7 Tage",
+  "clean": "Sauber", "dirty": "Zu reinigen", "inspected": "Kontrolliert", "occupied": "Belegt", "out of order": "Außer Betrieb", "unknown": "Unbekannt",
+  "Guest": "Gast",
+  // reports
+  "Financial reports": "Finanzberichte", "Month": "Monat", "Download CSV": "CSV herunterladen", "Loading report…": "Bericht wird geladen…",
+  "Invoiced (gross)": "Berechnet (brutto)", "Occupancy": "Auslastung", "Room nights sold": "Verkaufte Zimmernächte",
+  "Arrivals this month": "Anreisen diesen Monat", "Revenue and VAT": "Umsatz und MwSt.", "VAT rate": "MwSt.-Satz",
+  "No invoices issued this month": "Diesen Monat keine Rechnungen", "Payments by method": "Zahlungen nach Zahlungsart",
+  "Method": "Zahlungsart", "Payments": "Zahlungen", "Amount": "Betrag", "No payments received this month": "Diesen Monat keine Zahlungen",
+  "Revenue by day (gross)": "Umsatz pro Tag (brutto)", "Invoices this month": "Rechnungen diesen Monat", "Invoice": "Rechnung",
+  "Date": "Datum", "Paid": "Bezahlt", "Due": "Offen", "Cash": "Bar", "On account (bank transfer)": "Auf Rechnung (Überweisung)",
+  "Bank transfer": "Überweisung", "Other": "Sonstige", "Invoice number": "Rechnungsnummer", "Issued": "Ausgestellt",
+  "Booking": "Buchung", "Status": "Status", "There are no invoices in this month to export.": "In diesem Monat gibt es keine Rechnungen zum Exportieren.",
+  // assistant
+  "Ask about today, guests, rooms or money": "Fragen zu heute, Gästen, Zimmern oder Finanzen", "New chat": "Neuer Chat", "Ask": "Fragen",
+  "Hello! I can answer questions about Hotel Morgenstern using today's live data, and I can write or translate messages for guests. Try one of the questions below.":
+    "Hallo! Ich beantworte Fragen zum Hotel Morgenstern mit den aktuellen Live-Daten und kann Nachrichten für Gäste schreiben oder übersetzen. Probieren Sie eine der Fragen unten.",
+  "Type a question… (Enter to send, Shift+Enter for a new line)": "Frage eingeben… (Enter zum Senden, Umschalt+Enter für neue Zeile)",
+  "Answers come from AI and can be wrong. Double-check important numbers.": "Antworten kommen von KI und können falsch sein. Wichtige Zahlen bitte prüfen.",
+  "New chat started. What would you like to know?": "Neuer Chat gestartet. Was möchten Sie wissen?", "Thinking…": "Denke nach…",
+  "How many guests arrive and leave today?": "Wie viele Gäste reisen heute an und ab?",
+  "Which rooms are not ready for today's arrivals?": "Welche Zimmer sind für die heutigen Anreisen nicht bereit?",
+  "Which invoices are still unpaid?": "Welche Rechnungen sind noch offen?",
+  "What is our occupancy, ADR and RevPAR this month?": "Wie hoch sind Auslastung, ADR und RevPAR diesen Monat?",
+  "Are any in-house guests missing a Meldeschein?": "Fehlt bei Gästen im Haus ein Meldeschein?",
+  "Write a booking confirmation email in Italian for MS-1005.": "Schreibe eine Buchungsbestätigung auf Italienisch für MS-1005.",
+};
+const DE_RX = [
+  [/^(\d+) of (\d+) rooms booked tonight$/, "$1 von $2 Zimmern heute Nacht gebucht"],
+  [/^Room (.+)$/, "Zimmer $1"], [/^since (.+)$/, "seit $1"], [/^(.+) due$/, "$1 offen"],
+  [/^(.*) · asked (.*)$/, "$1 · angefragt $2"], [/^VAT (.+)$/, "MwSt. $1"],
+  [/^Sorry, something went wrong: (.*)$/s, "Entschuldigung, etwas ist schiefgelaufen: $1"],
+  [/^Couldn't load data: (.*)$/s, "Daten konnten nicht geladen werden: $1"],
+  [/^That did not work: (.*)$/s, "Das hat nicht funktioniert: $1"],
+  [/^Reject and delete the account request from (.+)\?$/, "Kontoanfrage von $1 ablehnen und löschen?"],
+];
+function tr(s) {
+  if (LANG !== "de") return s;
+  const k = String(s).trim();
+  if (DE[k] != null) return String(s).replace(k, DE[k]);
+  for (const [rx, to] of DE_RX) if (rx.test(k)) return String(s).replace(k, k.replace(rx, to));
+  return s;
+}
+function trTree(root) {
+  if (LANG !== "de" || !root) return;
+  if (root.nodeType === 3) { if (!root.parentElement?.closest("[data-raw]")) { const v = tr(root.nodeValue); if (v !== root.nodeValue) root.nodeValue = v; } return; }
+  if (root.nodeType !== 1 || root.closest("[data-raw], script, style")) return;
+  ["placeholder", "title", "aria-label"].forEach(a => { if (root.hasAttribute(a)) root.setAttribute(a, tr(root.getAttribute(a))); });
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let n; while ((n = w.nextNode())) {
+    if (n.nodeType === 1) { if (n.matches("[data-raw], script, style")) continue; ["placeholder", "title", "aria-label"].forEach(a => { if (n.hasAttribute(a)) n.setAttribute(a, tr(n.getAttribute(a))); }); }
+    else if (!n.parentElement.closest("[data-raw], script, style")) { const v = tr(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; }
+  }
+}
+const _alert = window.alert.bind(window), _confirm = window.confirm.bind(window);
+window.alert = (m) => _alert(tr(m)); window.confirm = (m) => _confirm(tr(m));
+document.addEventListener("DOMContentLoaded", () => {
+  trTree(document.body);
+  new MutationObserver(ms => ms.forEach(m => {
+    if (m.type === "characterData") trTree(m.target); else m.addedNodes.forEach(trTree);
+  })).observe(document.body, { childList: true, subtree: true, characterData: true });
+  document.querySelectorAll("[data-setlang]").forEach(b => {
+    b.setAttribute("aria-pressed", b.dataset.setlang === LANG);
+    b.onclick = () => { try { localStorage.setItem("ictorv-lang", b.dataset.setlang); } catch (e) {} location.reload(); };
+  });
+});
+/* ======================================================================================= */
+
 /* ================= CONFIG — fill these in ================= */
 // Copy both values from your invoices.html (or Supabase → Connect).
 const SUPABASE_URL = "https://blccrbiilztmothfrqqj.supabase.co";
@@ -168,7 +266,7 @@ const MANAGER_ROLES = ["direktor", "empfangsleitung"];
 /* ========================================================== */
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const eur = new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" });
+const eur = new Intl.NumberFormat(LOC, { style: "currency", currency: "EUR" });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -180,7 +278,7 @@ const inHouseOn = (r, d) => isActive(r) && r.status !== "checked_out" && day(r.a
 
 // Sidebar
 $("nav").innerHTML = PAGES.map(([label, href]) =>
-  `<a href="${href}" class="${href === "dashboard.html" ? "active" : ""}">${label}</a>`).join("");
+  `<a href="${href}" class="${href === "dashboard.html" ? "active" : ""}">${tr(label)}</a>`).join("");
 
 /* ---------- Who is online (Supabase Realtime Presence) ---------- */
 let onlineCh = null;
@@ -205,8 +303,9 @@ $("signout").onclick = async () => { await logSignOut(sb); await sb.auth.signOut
 $("refresh").onclick = load;
 
 const ROLE_LABEL = { direktor: "Director", empfangsleitung: "Front office manager", rezeption: "Reception", housekeeping: "Housekeeping", haustechnik: "Maintenance" };
-const clock = (v) => new Date(v).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-const stamp = (v) => new Date(v).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+if (LANG === "de") Object.assign(ROLE_LABEL, { direktor: "Direktor/in", empfangsleitung: "Empfangsleitung", rezeption: "Rezeption", housekeeping: "Housekeeping", haustechnik: "Haustechnik" });
+const clock = (v) => new Date(v).toLocaleTimeString(LOC, { hour: "2-digit", minute: "2-digit" });
+const stamp = (v) => new Date(v).toLocaleString(LOC, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
 function renderOnline(state) {
   const people = Object.values(state).map(tabs => tabs.reduce((a, b) => (a.since < b.since ? a : b)))
@@ -258,7 +357,7 @@ async function load() {
   const now = new Date();
   const today = ymd(now);
   const month = today.slice(0, 7);
-  $("today").textContent = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  $("today").textContent = now.toLocaleDateString(LOC, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
@@ -344,7 +443,7 @@ async function load() {
   const week = [...Array(7)].map((_, i) => {
     const d = addDays(now, i), key = ymd(d);
     const occ = new Set(res.filter(r => inHouseOn(r, key)).map(r => r.room_number)).size;
-    return { label: d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }), pct: Math.round(occ / totalRooms * 100), today: i === 0 };
+    return { label: d.toLocaleDateString(LOC, { weekday: "short", day: "numeric" }), pct: Math.round(occ / totalRooms * 100), today: i === 0 };
   });
 
   const C = 2 * Math.PI * 88;
